@@ -35,7 +35,6 @@ import com.wso2telco.proxy.util.EncryptAES;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
 import org.wso2.carbon.identity.application.authentication.framework.exception.AuthenticationFailedException;
 import org.wso2.carbon.identity.user.registration.stub.*;
 import org.wso2.carbon.identity.user.registration.stub.dto.UserDTO;
@@ -62,11 +61,8 @@ import java.rmi.RemoteException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.UUID;
 
 @Path("/")
 public class Endpoints {
@@ -132,11 +128,9 @@ public class Endpoints {
 
 
         //maintain userstatus related to request for data publishing purpose
-        AuthenticationContext authenticationContext = new AuthenticationContext();
-        UserStatus userStatus = DataPublisherUtil.buildUserStatusFromRequest(httpServletRequest,
-                                                                             authenticationContext);
+        UserStatus userStatus = DataPublisherUtil.buildUserStatusFromRequest(httpServletRequest);
         //check for forwarded trn Id
-        String transactionId = DataPublisherUtil.resolveSessionID(httpServletRequest, authenticationContext);
+        String transactionId = DataPublisherUtil.getSessionID(httpServletRequest);
         if (StringUtils.isEmpty(transactionId)) {
             //generate new trn id
             transactionId = UUID.randomUUID().toString();
@@ -148,7 +142,7 @@ public class Endpoints {
 
         userStatus.setStatus(DataPublisherUtil.UserState.PROXY_PROCESSING.name());
         DataPublisherUtil.publishUserStatusMetaData(userStatus);
-        DataPublisherUtil.updateAndPublishUserStatus(userStatus, DataPublisherUtil.UserState.PROXY_PROCESSING,null);
+        DataPublisherUtil.updateAndPublishUserStatus(userStatus, DataPublisherUtil.UserState.PROXY_PROCESSING, null);
 
 
         if (!configurationService.getDataHolder().getMobileConnectConfig().isSpValidationDisabled() && !isValidScope(scopeName, clientId)) {
@@ -219,6 +213,14 @@ public class Endpoints {
 
                 if (isScopeExists) {
                     operatorScopeWithClaims = queryParams.get(AuthProxyConstants.SCOPE).get(0);
+
+                    // Check if scope list contains openid scope, and append if it does not contain
+                    if(queryParams.containsKey("scope") && queryParams.get("scope").get(0) != null){
+                        List<String> scopes = new ArrayList<>(Arrays.asList(queryParams.get("scope").get(0).split(" ")));
+                        if(!scopes.contains("openid")) {
+                            queryParams.get("scope").add(0, queryParams.get("scope").get(0) + " openid");
+                        }
+                    }
 
                     queryString = processQueryString(queryParams, queryString);
 
@@ -585,7 +587,7 @@ public class Endpoints {
 
     private String getIpAddress(HttpHeaders httpHeaders, String operatorName) {
         String ipAddress = null;
-        MobileConnectConfig.OPERATOR operatorProperties = operatorPropertiesMap.get(operatorName);
+            MobileConnectConfig.OPERATOR operatorProperties = operatorPropertiesMap.get(operatorName);
         String ipHeaderName = mobileConnectConfigs.getHEADERENRICH().getIPHeaderName();
         if (StringUtils.isNotEmpty(ipHeaderName) && operatorProperties != null) {
             boolean isRequiredIpValidation = "true".equalsIgnoreCase(operatorProperties.getIpValidation());
