@@ -47,11 +47,7 @@
             <artifactId>jersey-server</artifactId>
             <version>1.8</version>
         </dependency>
-        <dependency>
-            <groupId>commons-logging</groupId>
-            <artifactId>commons-logging</artifactId>
-            <version>1.2</version>
-        </dependency>
+
         <dependency>
             <groupId>org.wso2.orbit.org.apache.httpcomponents</groupId>
             <artifactId>httpclient</artifactId>
@@ -67,6 +63,7 @@
             <artifactId>dbutils</artifactId>
             <scope>provided</scope>
         </dependency>
+
     </dependencies>
     <repositories>
         <repository>
@@ -120,7 +117,6 @@
                 <configuration>
                     <webResources>
                         <resource>
-                            <!-- this is relative to the pom.xml directory -->
                             <directory>src/main/webapp</directory>
                         </resource>
                     </webResources>

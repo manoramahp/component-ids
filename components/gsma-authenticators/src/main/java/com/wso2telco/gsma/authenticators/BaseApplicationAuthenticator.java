@@ -1,11 +1,11 @@
 /*******************************************************************************
- * Copyright (c) 2015-2016, WSO2.Telco Inc. (http://www.wso2telco.com)
+ * Copyright (c) 2015-2017, WSO2.Telco Inc. (http://www.wso2telco.com)
  *
  * All Rights Reserved. WSO2.Telco Inc. licences this file to you under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,27 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-package com.wso2telco.entity;
 
-public class Fcm {
+package com.wso2telco.gsma.authenticators;
 
-    private String to;
-
-    private Data data;
-
-    public String getTo() {
-        return to;
-    }
-
-    public void setTo(String to) {
-        this.to = to;
-    }
-
-    public Data getData() {
-        return data;
-    }
-
-    public void setData(Data data) {
-        this.data = data;
-    }
+/**
+ * Base application authenticator interface
+ */
+public interface BaseApplicationAuthenticator {
+    /**
+     * Gets the AMR value depending on the ACR value
+     * @param acr the acr value
+     * @return AMR value of the Authenticator for the provided ACR
+     */
+    String getAmrValue(int acr);
 }

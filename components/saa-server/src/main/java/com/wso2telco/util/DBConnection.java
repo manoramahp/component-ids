@@ -15,10 +15,9 @@
  ******************************************************************************/
 package com.wso2telco.util;
 
-import com.wso2telco.core.config.service.ConfigurationService;
-import com.wso2telco.core.config.service.ConfigurationServiceImpl;
 import com.wso2telco.core.dbutils.DBUtilException;
 import com.wso2telco.core.dbutils.DbUtils;
+import com.wso2telco.entity.ClientDetails;
 import com.wso2telco.exception.EmptyResultSetException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -35,26 +34,18 @@ public class DBConnection {
     private static Log logger = LogFactory.getLog(DBConnection.class);
     private static DBConnection instance = null;
 
-    String connectionURL;
-    String dbUser;
-    String dbPassword;
-    private Log log = LogFactory.getLog(DBConnection.class);
-    private Connection connection = null;
-    private PreparedStatement statement;
-    private ResultSet resultSet;
+    protected DBConnection() {
 
+    }
 
-    protected DBConnection() throws SQLException, ClassNotFoundException, DBUtilException {
-        connection = DbUtils.getConnectDbConnection();
+    public Connection getConnection() throws SQLException, DBUtilException {
+        Connection connection = DbUtils.getConnectDbConnection();
+        return connection;
     }
 
     public static DBConnection getInstance() throws ClassNotFoundException {
         if (instance == null) {
-            try {
-                instance = new DBConnection();
-            } catch (SQLException | DBUtilException e) {
-                logger.error("Error occurred while getting connection");
-            }
+            instance = new DBConnection();
         }
         return instance;
     }
@@ -68,11 +59,10 @@ public class DBConnection {
      * @param msisdn         mobile number
      * @return int indicating the transaction is success or failure
      */
-    public boolean addClient(String clientDeviceId, String platform, String pushToken, String msisdn) {
+    public void addClient(String clientDeviceId, String platform, String pushToken, String msisdn) throws SQLException, DBUtilException {
         String timeStamp = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(Calendar.getInstance().getTime());
-
         String query = "INSERT INTO clients (client_device_id,platform,push_token,date_time,msisdn) VALUES ('" + clientDeviceId + "','" + platform + "','" + pushToken + "','" + timeStamp + "','" + msisdn + "');";
-        return executeUpdate(query);
+        executeUpdate(query);
     }
 
     /**
@@ -81,25 +71,32 @@ public class DBConnection {
      * @param msisdn mobile number
      * @return int indicating the transaction is success ,failure or error
      */
-    public int isExist(String msisdn) {
-        final int UNREGISTEREDCLIENT = 1;
-        final int REGISTEREDCLIENT = 0;
-        final int ERROR = 2;
+    public boolean isExist(String msisdn) throws SQLException, DBUtilException {
+
+        Connection connection = null;
+        PreparedStatement statement = null;
+        ResultSet resultSet = null;
 
         String query = "SELECT * FROM clients where msisdn=" + msisdn + ";";
         try {
+            connection = getConnection();
             statement = connection.prepareStatement(query);
             resultSet = statement.executeQuery(query);
 
             if (!resultSet.next()) {
-                return UNREGISTEREDCLIENT;
+                return true;
             } else {
-                return REGISTEREDCLIENT;
+                return false;
             }
 
-        } catch (SQLException ex) {
-            log.info(ex.getMessage());
-            return ERROR;
+        } catch (SQLException e) {
+            logger.info("SQLException occurred " + e);
+            throw new SQLException(e.getMessage(), e);
+        } catch (DBUtilException e) {
+            logger.info("DBUtilException occurred " + e);
+            throw new DBUtilException(e.getMessage(), e);
+        } finally {
+            close(connection, statement, resultSet);
         }
     }
 
@@ -109,20 +106,42 @@ public class DBConnection {
      * @param msisdn mobile number
      * @return clientID
      */
-    public String[] getClientDetails(String msisdn) throws SQLException, EmptyResultSetException {
-        String clientDetails[] = new String[3];
+    public ClientDetails getClientDetails(String msisdn) throws EmptyResultSetException, SQLException, DBUtilException {
+
+        logger.info("getting client details");
+        Connection connection = null;
+        PreparedStatement statement = null;
+        ResultSet resultSet = null;
+        ClientDetails clientDetails = new ClientDetails();
 
         String query = "SELECT client_device_id,platform,push_token FROM clients WHERE msisdn='" + msisdn + "';";
-        statement = connection.prepareStatement(query);
-        resultSet = statement.executeQuery(query);
+        try {
+            connection = getConnection();
+            statement = connection.prepareStatement(query);
+            resultSet = statement.executeQuery(query);
 
-        if (resultSet.next()) {
-            clientDetails[0] = resultSet.getString(1);
-            clientDetails[1] = resultSet.getString(2);
-            clientDetails[2] = resultSet.getString(3);
-            return clientDetails;
-        } else {
-            throw new EmptyResultSetException("Result set is empty");
+            logger.info("Result set: " + resultSet.toString());
+            if (resultSet.next()) {
+                logger.info(resultSet.getString(1));
+                logger.info(resultSet.getString(2));
+                logger.info(resultSet.getString(3));
+
+                clientDetails.setDeviceId(resultSet.getString("client_device_id"));
+                clientDetails.setPlatform(resultSet.getString("platform"));
+                clientDetails.setPushToken(resultSet.getString("push_token"));
+                return clientDetails;
+            } else {
+                logger.error("Error occurred Result Set is null!!!!");
+                throw new EmptyResultSetException("Result Set is empty");
+            }
+        } catch (SQLException e) {
+            logger.error("SQLException occurred !!!" + e);
+            throw new SQLException(e.getMessage(), e);
+        } catch (DBUtilException e) {
+            logger.error("DBUtilException occurred !!!" + e);
+            throw new DBUtilException(e.getMessage(), e);
+        } finally {
+            close(connection, statement, resultSet);
         }
     }
 
@@ -134,12 +153,12 @@ public class DBConnection {
      * @param message        message
      * @return int indicating the transaction is success ,failure or
      */
-    public boolean authenticateClient(String refID, String clientDeviceId, String message) {
+    public void authenticateClient(String refID, String clientDeviceId, String message) throws SQLException, DBUtilException {
 
         String timeStamp = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(Calendar.getInstance().getTime());
 
         String query = "INSERT INTO messages (ref_id,client_device_id,message,req_date_time,status)VALUES ('" + refID + "','" + clientDeviceId + "','" + message + "','" + timeStamp + "','P');";
-        return executeUpdate(query);
+        executeUpdate(query);
     }
 
     /**
@@ -149,10 +168,10 @@ public class DBConnection {
      * @param status status
      * @return int indicating the transaction is success ,failure or
      */
-    public boolean updateMessageTable(String refID, char status) {
+    public void updateMessageTable(String refID, char status) throws SQLException, DBUtilException {
 
         String query = "UPDATE messages SET status='" + status + "' where ref_id='" + refID + "';";
-        return executeUpdate(query);
+        executeUpdate(query);
     }
 
     /**
@@ -161,25 +180,37 @@ public class DBConnection {
      * @param msisdn mobile number
      * @return int indicating the deletion is success ,failure or
      */
-    public boolean removeClient(String msisdn) {
+    public void removeClient(String msisdn) throws SQLException, DBUtilException {
         String query = "DELETE FROM clients WHERE msisdn='" + msisdn + "';";
-        return executeUpdate(query);
+        executeUpdate(query);
     }
 
-    private boolean executeUpdate(String query) {
+    private void executeUpdate(String query) throws SQLException, DBUtilException {
+
+        Connection connection = null;
+        PreparedStatement statement = null;
+        ResultSet resultSet = null;
+
         try {
+            connection = getConnection();
             statement = connection.prepareStatement(query);
             statement.executeUpdate();
-            return true;
-        } catch (SQLException ex) {
-            return false;
+        } catch (SQLException e) {
+            logger.error("SQLException occurred " + e);
+            throw new SQLException(e);
+        } catch (DBUtilException e) {
+            logger.error("DBUtilException occurred " + e);
+            throw new DBUtilException(e);
+        } finally {
+            close(connection, statement, resultSet);
         }
     }
 
     /**
      * Close the database connection.
      */
-    private void close() {
+    public void close(Connection connection, PreparedStatement statement, ResultSet resultSet) {
+
         try {
             if (resultSet != null)
                 resultSet.close();
@@ -188,6 +219,9 @@ public class DBConnection {
             if (connection != null)
                 connection.close();
         } catch (Exception e) {
+            logger.error("Error occurred " + e);
         }
     }
 }
+
+

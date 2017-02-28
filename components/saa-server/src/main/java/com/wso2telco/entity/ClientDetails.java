@@ -15,25 +15,35 @@
  ******************************************************************************/
 package com.wso2telco.entity;
 
-public class Fcm {
+public class ClientDetails {
 
-    private String to;
+    private String deviceId;
 
-    private Data data;
+    private String platform;
 
-    public String getTo() {
-        return to;
+    private String pushToken;
+
+    public String getDeviceId() {
+        return deviceId;
     }
 
-    public void setTo(String to) {
-        this.to = to;
+    public void setDeviceId(String deviceId) {
+        this.deviceId = deviceId;
     }
 
-    public Data getData() {
-        return data;
+    public String getPlatform() {
+        return platform;
     }
 
-    public void setData(Data data) {
-        this.data = data;
+    public void setPlatform(String platform) {
+        this.platform = platform;
+    }
+
+    public String getPushToken() {
+        return pushToken;
+    }
+
+    public void setPushToken(String pushToken) {
+        this.pushToken = pushToken;
     }
 }

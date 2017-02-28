@@ -174,7 +174,6 @@ public class Endpoints {
         return response;
     }
 
-
     /**
      * Ussd receive.
      *
